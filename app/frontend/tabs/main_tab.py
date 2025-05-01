@@ -33,6 +33,11 @@ class MainTabBuilder:
         
         # Main layout
         main_layout = ft.Column([
+            # Right-aligned button 
+            ft.Container(
+                content=add_button,
+                alignment=ft.alignment.bottom_right
+            ),
             # Centered header section
             ft.Container(
                 content=ft.Column([header, description], spacing=AppSpacing.SMALL),
@@ -40,12 +45,6 @@ class MainTabBuilder:
             ),
             
             ft.Container(height=AppSpacing.LARGE),  # Spacer
-            
-            # Right-aligned button 
-            ft.Container(
-                content=add_button,
-                alignment=ft.alignment.bottom_right
-            ),
             
             # Book grid would go here
         ])

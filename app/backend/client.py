@@ -4,7 +4,7 @@ from typing import List, Optional
 import uuid
 from loguru import logger
 
-from app.backend.models import Book 
+from app.models.models import Book 
 
 class BackendClient:
     """

@@ -1,10 +1,14 @@
 import flet as ft
 
+from loguru import logger
+
 from app.backend.client import BackendClient
+from app.frontend.forms.book_form import BookForm
 from app.frontend.tabs.main_tab import MainTabBuilder
 from app.frontend.ui_components import UIComponents
 from app.frontend.tab_manager import TabManager
 from app.frontend.theme import AppColors, AppTypography, AppSpacing, AppInputs, AppProgress, AppTabs
+from app.models.models import Book
 
 
 class FletApp():
@@ -26,6 +30,7 @@ class FletApp():
         self.dev_mode = dev_mode
         self.backend_client = backend_client
         self.ui_builder = UIComponents(page=self.page)
+        self.dialog = ft.AlertDialog(open=False)
         
         # Init TabManager and pass tab_handlers
         self.tab_manager = TabManager(
@@ -65,7 +70,7 @@ class FletApp():
         self.page.add(main_layout)
         self.page.update()
     
-
+    
     def create_aboutme_tab(self):
         """Creates content for the About Me tab"""
         about_me_header = self.ui_builder.create_text_field(
@@ -104,47 +109,76 @@ class FletApp():
             about_me_form
         )
         self.page.update()
-        
+    
+    
     def add_book(self, e: ft.ControlEvent) -> None:
         """Handler for the Add Book button click"""
-        print(f"ADD BOOK WORKS")
+        logger.info("ADD BOOK HANDLER")
         
-        
-    def on_get_started(self, e):
-        """Handler for the Get Started button"""
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text("Welcome! Let's get started."),
-            action="OK",
+        # Create an instance of BookForm
+        book_form = BookForm(
+            page=self.page,
+            ui_builder=self.ui_builder,
+            on_save_callback=self.save_book_data
         )
-        self.page.snack_bar.open = True
-        self.page.update()
         
-        # Navigate to Authorization tab
-        self.tab_manager.select_tab(1)
+        # Show the dialog
+        book_form.show_dialog()
     
-    def on_save_settings(self, e):
-        """Handler for the Save Settings button"""
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text("Settings saved successfully!"),
+    def edit_book(self, e: ft.ControlEvent, book: Book) -> None:
+        """Handler for editing an existing book"""
+        logger.info(f"EDIT BOOK HANDLER")
+        
+        # Create an instance of BookForm with the book to edit
+        book_form = BookForm(
+            page=self.page,
+            ui_builder=self.ui_builder,
+            on_save_callback=self.save_book_data,
+            book_to_edit=book
+        )
+        
+        # Show the dialog
+        book_form.show_dialog()
+    
+    def close_dialog(self):
+        """Helper method to close the current dialog"""
+        self.dialog.open = False
+        self.page.update()
+
+    def edit_book(self, e: ft.ControlEvent, book: Book) -> None:
+        """Handler for editing an existing book"""
+        logger.info(f"EDIT BOOK HANDLER")
+
+    def save_book_data(self, book: Book) -> None:
+        """Save the book data after form submission"""
+        logger.info(f"Saving book {book.title} by {book.author}")
+        logger.info(f"Book detaisl: {book.model_dump()}")
+        
+        # Here I will connect with backend client to save the book
+        # self.backend_client.save_book(book)
+    
+        self.snack_bar = ft.SnackBar(
+            content=ft.Text(f"Book '{book.title}' saved successfully!"),
             action="OK",
         )
-        self.page.snack_bar.open = True
+        self.page.add(self.snack_bar)
+        self.snack_bar.open = True
         self.page.update()
         
-    def login_handler(self, e: ft.ControlEvent) -> None:
-        """Handles login button click"""
-        print(f"Login button is clicked")
+        # And we will refresh book list here
+        # self.refresh_book_list()
     
     def back_handler(self, e: ft.ControlEvent) -> None:
         """Handles back button click"""
         success = self.tab_manager.back_to_previous()
         if not success:
             # Show message if already at the first tab
-            self.page.snack_bar = ft.SnackBar(
+            self.snack_bar = ft.SnackBar(
                 content=ft.Text("Already at the first tab"),
                 action="OK"
             )
-            self.page.snack_bar.open = True
+            self.page.add(self.snack_bar)
+            self.snack_bar.open = True
             self.page.update()
             
 
