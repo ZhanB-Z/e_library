@@ -8,7 +8,7 @@ from app.frontend.tabs.main_tab import MainTabBuilder
 from app.frontend.ui_components import UIComponents
 from app.frontend.tab_manager import TabManager
 from app.frontend.theme import AppColors, AppTypography, AppSpacing, AppInputs, AppProgress, AppTabs
-from app.models.models import Book
+from app.models.models import BookSchema
 
 
 class FletApp():
@@ -63,10 +63,17 @@ class FletApp():
         """Create content for the main tab"""
         
         # Create main tab builder
-        main_tab_builder = MainTabBuilder(self.page, self.ui_builder)
+        main_tab_builder = MainTabBuilder(
+            self.page, 
+            self.ui_builder,
+            self.backend_client
+        )
         
         # Get the layout and add it to the page
-        main_layout = main_tab_builder.create_tab(on_add_book=self.add_book)
+        main_layout = main_tab_builder.create_tab(
+            on_add_book=self.add_book,
+            on_edit_book=self.edit_book,
+        )
         self.page.add(main_layout)
         self.page.update()
     
@@ -125,7 +132,7 @@ class FletApp():
         # Show the dialog
         book_form.show_dialog()
     
-    def edit_book(self, e: ft.ControlEvent, book: Book) -> None:
+    def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handler for editing an existing book"""
         logger.info(f"EDIT BOOK HANDLER")
         
@@ -145,29 +152,54 @@ class FletApp():
         self.dialog.open = False
         self.page.update()
 
-    def edit_book(self, e: ft.ControlEvent, book: Book) -> None:
-        """Handler for editing an existing book"""
-        logger.info(f"EDIT BOOK HANDLER")
-
-    def save_book_data(self, book: Book) -> None:
+    def save_book_data(self, book: BookSchema) -> None:
         """Save the book data after form submission"""
         logger.info(f"Saving book {book.title} by {book.author}")
         logger.info(f"Book detaisl: {book.model_dump()}")
         
         # Here I will connect with backend client to save the book
-        # self.backend_client.save_book(book)
-    
-        self.snack_bar = ft.SnackBar(
-            content=ft.Text(f"Book '{book.title}' saved successfully!"),
-            action="OK",
-        )
-        self.page.add(self.snack_bar)
-        self.snack_bar.open = True
-        self.page.update()
+        saved_book = self.backend_client.save_book(book)
         
-        # And we will refresh book list here
-        # self.refresh_book_list()
-    
+        if saved_book:
+            self.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Book '{book.title}' saved successfully!"),
+                action="OK",
+            )
+            self.page.add(self.snack_bar)
+            self.snack_bar.open = True
+        
+            # And we will refresh book list here
+            self.refresh_book_list()
+        
+        else:
+            self.snack_bar = ft.SnackBar(
+                content=ft.Text(f"Failed to save book: '{book.title}'"),
+                action="OK",
+            )
+            self.page.add(self.snack_bar)
+            self.snack_bar.open = True
+        
+        self.page.update()
+
+    def refresh_book_list(self):
+        """Refresh the book list display"""
+        # Clear the current tab and recreate it
+        self.tab_manager.select_tab(0)
+
+    def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
+        """Handler for editing an existing book"""
+        logger.info(f"EDIT BOOK HANDLER for {book.title}")
+        
+        # Create an instance of BookForm with the book to edit
+        book_form = BookForm(
+            page=self.page,
+            ui_builder=self.ui_builder,
+            on_save_callback=self.save_book_data,
+            book_to_edit=book
+        )
+        
+        # Show the dialog
+        book_form.show_dialog()
     def back_handler(self, e: ft.ControlEvent) -> None:
         """Handles back button click"""
         success = self.tab_manager.back_to_previous()

@@ -51,7 +51,10 @@ class UIComponents:
             bgcolor=bgcolor,
             color=color,
             adaptive=adaptive,
-            content=ft.Row([ft.Text(text)]),
+            content=ft.Row(
+                [ft.Text(text)],
+                alignment=ft.MainAxisAlignment.CENTER
+            ),
             style=ft.ButtonStyle(text_style=ft.TextStyle(size=text_size)),
             **kwargs
         )
@@ -218,6 +221,8 @@ class UIComponents:
             width: Optional[float] = None,
             height: Optional[float] = None,
             text_size: Optional[int] = None,
+            no_wrap: Optional[bool] = False,
+            overflow: Optional[ft.TextOverflow]="visible",
             expand: bool = False,
             **kwargs
     ) -> ft.Text:
@@ -246,8 +251,8 @@ class UIComponents:
             height=height,
             width=width,
             expand=expand,
-            no_wrap=False,
-            overflow="visible",
+            no_wrap=no_wrap,
+            overflow=overflow,
             max_lines=None,
             size=text_size,
             **kwargs
@@ -453,3 +458,12 @@ class UIComponents:
                 
         self.page.add(column_content)
         self.page.update()
+        
+    @staticmethod
+    def truncate_text(text: str, max_length: int = 20) -> str:
+        """
+        Truncates text to the specified maximum length and adds ellipsis if needed.
+        """
+        if len(text) <= max_length:
+            return text
+        return text[:max_length - 3] + "..."

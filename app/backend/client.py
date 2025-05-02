@@ -1,72 +1,45 @@
-import json
-import os
+# app/backend/client.py
 from typing import List, Optional
-import uuid
-from loguru import logger
+from uuid import UUID
 
-from app.models.models import Book 
+from app.models.models import BookSchema
+from app.backend.db.db_connection import get_db_session, engine, Base
+from app.backend.repository.book_repository import BookRepository
+
+# Create tables when app starts
+Base.metadata.create_all(bind=engine)
 
 class BackendClient:
-    """
-    Template of the Backend Client
-    """
-    def __init__(self, data_file: str = "books.json"):
-        self.data_file = data_file
-        self._ensure_data_file_exists()
+    def __init__(self):
+        # Get a session from the session pool
+        self.db = next(get_db_session())
+        self.book_repository = BookRepository(db_session=self.db)
     
-    def _ensure_data_file_exists(self) -> None:
-        """Create the data file if it doesn't exist"""
-        if not os.path.exists(self.data_file):
-            with open(self.data_file, "w") as f:
-                    json.dump([], f)
-
-    def get_book(self, book_id: uuid.UUID) -> Optional[Book]:
-        """Get a book by ID"""
-        books = self.get_all_books()
-        for book in books:
-            if book.id == book_id:
-                return book
-        return None
-
-    def add_book(self, book: Book) -> Book:
-        """Add a new book to the storage"""
-        books = self.get_all_books()
-        books.append(book)
-        self._save_books(books)
-        return book
-        
-    def update_book(self, book: Book) -> Optional[Book]:
-        """Update an existing book"""
-        books = self.get_all_books()
-        updated = False
-        
-        for i, existing_book in enumerate(books):
-            if str(existing_book.id) == str(book.id):
-                books[i] = book
-                updated = True
-                break
-        if updated:
-            self._save_books(books)
-            return book
-        return None
+    def get_all_books(self) -> List[BookSchema]:
+        """Retrieve all books from the database"""
+        return self.book_repository.get_all_books()
     
-    def delete_book(self, bookd_id: uuid.UUID) -> bool:
+    def get_book_by_id(self, book_id: UUID) -> Optional[BookSchema]:
+        """Retrieve a specific book by ID"""
+        return self.book_repository.get_book_by_id(book_id)
+    
+    def save_book(self, book: BookSchema) -> BookSchema:
+        """Save or update a book"""
+        existing_book = None
+        if book.id:
+            existing_book = self.get_book_by_id(book.id)
+            
+        if existing_book:
+            # Update existing book
+            return self.book_repository.update_book(book)
+        else:
+            # Create new book
+            return self.book_repository.create_book(book)
+    
+    def delete_book(self, book_id: UUID) -> bool:
         """Delete a book by ID"""
-        books = self.get_all_books()
-        initial_count = len(books)
-        books = [book for book in books if str(book.id) != str(bookd_id)]
-        
-        if len(books) < initial_count:
-            self._save_books(books)
-            return True
-        return False
-
-    def _save_books(self, books: List[Book]):
-        """Save books to storage"""
-        books_data = [book.model_dump() for book in books]
-        with open(self.data_file, "w") as f:
-            json.dump(books_data, f, indent=2, default=str)
-
+        return self.book_repository.delete_book(book_id)
 
 def get_backend_client() -> BackendClient:
+    """Factory function to create a backend client"""
     return BackendClient()

@@ -2,7 +2,7 @@ import uuid
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
-class Book(BaseModel):
+class BookSchema(BaseModel):
     id: uuid.UUID = Field(default_factory=uuid.uuid4)
     title: str
     author: str
@@ -14,3 +14,4 @@ class Book(BaseModel):
     genres: List[str] = []
     cover_image: Optional[str]
     is_remote_image: bool = False
+    

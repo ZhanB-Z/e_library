@@ -4,7 +4,7 @@ from loguru import logger
 
 from app.frontend.theme import AppSpacing, AppTypography
 from app.frontend.ui_components import UIComponents
-from app.models.models import Book
+from app.models.models import BookSchema
 
 class BookForm:
     """
@@ -17,8 +17,8 @@ class BookForm:
         self,
         page: ft.Page,
         ui_builder: UIComponents,
-        on_save_callback: Callable[[Book], None],
-        book_to_edit: Optional[Book] = None
+        on_save_callback: Callable[[BookSchema], None],
+        book_to_edit: Optional[BookSchema] = None
     ) -> None:
         self.page = page
         self.ui_builder = ui_builder
@@ -167,7 +167,7 @@ class BookForm:
         # If we get here, all validations passed
         return True, ""
     
-    def collect_form_data(self) -> Optional[Book]:
+    def collect_form_data(self) -> Optional[BookSchema]:
         """
         Collect data from the form and create a Book object.
         Validation should be done before calling this method.
@@ -212,7 +212,7 @@ class BookForm:
                 book_data["id"] = self.book_to_edit.id
             
             # Create the Book object
-            book = Book(**book_data)
+            book = BookSchema(**book_data)
             
             return book
         except Exception as e:
@@ -232,7 +232,7 @@ class BookForm:
         
         # Create the dialog
         self.dialog = ft.AlertDialog(
-            modal=True,
+            # modal=True, # TODO: interesting: docs say True shall allow closing by clicking outside the AD, however, in fact it is the reverse. research more ...
             title=ft.Text(dialog_title),
             content=form_layout,
             actions=[
@@ -240,7 +240,8 @@ class BookForm:
                 ft.TextButton("Save", on_click=lambda e: self.handle_save_click(e)),
             ],
             actions_alignment=ft.MainAxisAlignment.END,
-            open=True
+            open=True,
+            scrollable=True,
         )
         
         # Add the dialog to the page

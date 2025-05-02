@@ -26,3 +26,6 @@ wheels/
 
 # Logs
 logs/
+
+# Data
+data/
