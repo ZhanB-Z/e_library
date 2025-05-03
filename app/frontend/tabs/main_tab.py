@@ -46,9 +46,6 @@ class MainTabBuilder:
         
         # Get books from backend
         books = self.backend_client.get_all_books()
-        logger.info(f"BOOKS TYPE: {type(books)}")
-        logger.info(f"BOOKS are: {books}")
-        logger.info(f"WE HAVE: {len(books)} books")
         
         # Create book grid
         book_grid = self.create_book_grid(books, on_edit_book)
@@ -115,11 +112,11 @@ class MainTabBuilder:
                 color=AppColors.TEXT_PRIMARY,
                 # tooltip=book.title,  # Show full title on hover
                 overflow=ft.TextOverflow.ELLIPSIS,
-                no_wrap=True,  # Prevent text wrapping
+                no_wrap=True,  
             ),
             height=40,  # Fixed height for title container
             width=260,  # Fixed width
-            alignment=ft.alignment.center_left  # Left-align the text within container
+            alignment=ft.alignment.center_left 
         )
             
         # Title and author
@@ -210,18 +207,20 @@ class MainTabBuilder:
             height=None  # Let height adjust to content
         )
         
-    def handle_delete_book(
-        self, 
-        e: ft.ControlEvent, 
-        book: BookSchema
-    ) -> None:
+    def handle_delete_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handle deletion of a book"""
-        def confirm_delete(e):
+        def confirm_delete(e: ft.ControlEvent) -> None:
             # Delete the book
             success = self.backend_client.delete_book(book.id)
             
             # Close the dialog
-            confirm_dialog.open = False
+            if self.confirm_dialog in self.page.controls:
+                self.page.controls.remove(self.confirm_dialog)
+            
+            if hasattr(self.page, 'overlay') and self.confirm_dialog in self.page.overlay:
+                self.page.overlay.remove(self.confirm_dialog)
+                
+            self.confirm_dialog.open = False
             self.page.update()
             
             if success:
@@ -233,11 +232,8 @@ class MainTabBuilder:
                 self.page.add(snack_bar)
                 snack_bar.open = True
                 
-                # Refresh the page
-                self.page.clean()
-                self.create_tab(lambda e: self.page.app.add_book(e), 
-                               lambda e, b: self.page.app.edit_book(e, b))
-                
+                # Use the update_book_grid method to refresh just the grid
+                self.update_book_grid(lambda e, b: self.page.app.edit_book(e, b))
             else:
                 # Show error message
                 snack_bar = ft.SnackBar(
@@ -249,18 +245,58 @@ class MainTabBuilder:
                 
             self.page.update()
         
+        def cancel_delete(e: ft.ControlEvent) -> None:
+            # Close the dialog without deleting
+            if self.confirm_dialog in self.page.controls:
+                self.page.controls.remove(self.confirm_dialog)
+                
+            if hasattr(self.page, 'overlay') and self.confirm_dialog in self.page.overlay:
+                self.page.overlay.remove(self.confirm_dialog)
+                
+            self.confirm_dialog.open = False
+            self.page.update()
+        
         # Create confirmation dialog
-        confirm_dialog = ft.AlertDialog(
+        self.confirm_dialog = ft.AlertDialog(
             title=ft.Text("Confirm Delete"),
             content=ft.Text(f"Are you sure you want to delete '{book.title}'?"),
             actions=[
-                ft.TextButton("Cancel", on_click=lambda e: setattr(confirm_dialog, "open", False)),
+                ft.TextButton("Cancel", on_click=cancel_delete),
                 ft.TextButton("Delete", on_click=confirm_delete)
             ],
             actions_alignment=ft.MainAxisAlignment.END,
             open=True
         )
         
-        # Show the dialog
-        self.page.dialog = confirm_dialog
+        # Show the dialog by adding it to the page
+        self.page.add(self.confirm_dialog)
         self.page.update()
+    
+    
+    def update_book_grid(self, on_edit_book: Callable) -> ft.Column:
+        """
+        Update the book grid with fresh data from the backend.
+        Returns the updated book grid component.
+        """
+        logger.info("UPDATE_BOOK_GRID: Fetching updated books")
+        
+        # Get fresh books data from backend
+        books = self.backend_client.get_all_books()
+        logger.info(f"UPDATE_BOOK_GRID: Got {len(books)} books")
+        
+        # Create new book grid with updated data
+        updated_grid = self.create_book_grid(books, on_edit_book)
+        
+        # Find and replace the existing grid in the page
+        for control in self.page.controls:
+            if isinstance(control, ft.Column):  # Main layout is a Column
+                # The book grid should be the last element in the main layout
+                if len(control.controls) >= 4:  # We have at least 4 controls in the main layout
+                    # Replace the book grid (last element)
+                    control.controls[3] = updated_grid
+                    logger.info("UPDATE_BOOK_GRID: Grid replaced in main layout")
+                    break
+        
+        return updated_grid
+
+

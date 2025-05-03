@@ -1,3 +1,5 @@
+import asyncio
+import time
 import flet as ft
 
 from loguru import logger
@@ -31,7 +33,7 @@ class FletApp():
         self.backend_client = backend_client
         self.ui_builder = UIComponents(page=self.page)
         self.dialog = ft.AlertDialog(open=False)
-        
+
         # Init TabManager and pass tab_handlers
         self.tab_manager = TabManager(
             page=self.page,
@@ -40,6 +42,13 @@ class FletApp():
                 0: self.create_main_tab,
                 1: self.create_aboutme_tab,
             }
+        )
+        
+        # Create main tab builder
+        self.main_tab_builder = MainTabBuilder(
+            self.page, 
+            self.ui_builder,
+            self.backend_client
         )
         
         # Set up the page
@@ -61,16 +70,8 @@ class FletApp():
     
     def create_main_tab(self):
         """Create content for the main tab"""
-        
-        # Create main tab builder
-        main_tab_builder = MainTabBuilder(
-            self.page, 
-            self.ui_builder,
-            self.backend_client
-        )
-        
         # Get the layout and add it to the page
-        main_layout = main_tab_builder.create_tab(
+        main_layout = self.main_tab_builder.create_tab(
             on_add_book=self.add_book,
             on_edit_book=self.edit_book,
         )
@@ -121,21 +122,18 @@ class FletApp():
     def add_book(self, e: ft.ControlEvent) -> None:
         """Handler for the Add Book button click"""
         logger.info("ADD BOOK HANDLER")
-        
         # Create an instance of BookForm
         book_form = BookForm(
             page=self.page,
             ui_builder=self.ui_builder,
             on_save_callback=self.save_book_data
         )
-        
         # Show the dialog
         book_form.show_dialog()
     
     def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handler for editing an existing book"""
         logger.info(f"EDIT BOOK HANDLER")
-        
         # Create an instance of BookForm with the book to edit
         book_form = BookForm(
             page=self.page,
@@ -143,50 +141,51 @@ class FletApp():
             on_save_callback=self.save_book_data,
             book_to_edit=book
         )
-        
         # Show the dialog
         book_form.show_dialog()
     
-    def close_dialog(self):
-        """Helper method to close the current dialog"""
-        self.dialog.open = False
-        self.page.update()
-
-    def save_book_data(self, book: BookSchema) -> None:
+    async def save_book_data(self, book: BookSchema) -> None:
         """Save the book data after form submission"""
-        logger.info(f"Saving book {book.title} by {book.author}")
-        logger.info(f"Book detaisl: {book.model_dump()}")
+        logger.info(f"SAVE_BOOK_DATA: Starting for book '{book.title}' by '{book.author}'")
         
         # Here I will connect with backend client to save the book
+        logger.info(f"SAVE_BOOK_DATA: Calling backend_client.save_book")
         saved_book = self.backend_client.save_book(book)
         
+        logger.info(f"SAVE_BOOK_DATA: Book saved successfully: {saved_book}")
+        
         if saved_book:
-            self.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Book '{book.title}' saved successfully!"),
-                action="OK",
-            )
-            self.page.add(self.snack_bar)
-            self.snack_bar.open = True
-        
+            logger.info(f"SAVE_BOOK_DATA: Book saved, refreshing book list")
             # And we will refresh book list here
-            self.refresh_book_list()
-        
-        else:
-            self.snack_bar = ft.SnackBar(
-                content=ft.Text(f"Failed to save book: '{book.title}'"),
-                action="OK",
-            )
-            self.page.add(self.snack_bar)
-            self.snack_bar.open = True
-        
-        self.page.update()
+            # await self.refresh_book_list()
+            # No page update here, refresh_book_list handles it
+            self.main_tab_builder.update_book_grid(self.edit_book)
+            
+            # Clear any dialog that might be lingering
+            for control in list(self.page.overlay):
+                if isinstance(control, ft.AlertDialog):
+                    self.page.overlay.remove(control)
+            
+            # Clear any dialog reference
+            self.dialog = None
 
-    def refresh_book_list(self):
-        """Refresh the book list display"""
-        # Clear the current tab and recreate it
-        self.tab_manager.select_tab(0)
+            # Single update at the end
+            await asyncio.sleep(0.2)  
+            self.page.update()
+    
+        logger.info(f"SAVE_BOOK_DATA: Completed with page reload")
+        # No final page update here
 
-    def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
+    # async def refresh_book_list(self):
+    #     """Refresh the book list display"""
+    #     # Clear the current tab and recreate it
+    #     await asyncio.sleep(0.3)  # Small delay before tab refresh
+    #     self.tab_manager.select_tab(0)
+    #     self.page.update()  # Single update here
+    #     logger.info(f"REFRESH_BOOK_LIST: Tab refreshed")
+
+
+    async def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handler for editing an existing book"""
         logger.info(f"EDIT BOOK HANDLER for {book.title}")
         
@@ -200,6 +199,7 @@ class FletApp():
         
         # Show the dialog
         book_form.show_dialog()
+        
     def back_handler(self, e: ft.ControlEvent) -> None:
         """Handles back button click"""
         success = self.tab_manager.back_to_previous()

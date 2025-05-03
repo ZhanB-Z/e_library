@@ -1,6 +1,8 @@
+import time
 from typing import Callable, Optional
 import flet as ft
 from loguru import logger
+import asyncio
 
 from app.frontend.theme import AppSpacing, AppTypography
 from app.frontend.ui_components import UIComponents
@@ -165,6 +167,7 @@ class BookForm:
                 return False, "Rating must be a valid number"
         
         # If we get here, all validations passed
+        logger.info(f"VALIDATE FORM: TRUE")
         return True, ""
     
     def collect_form_data(self) -> Optional[BookSchema]:
@@ -216,39 +219,10 @@ class BookForm:
             
             return book
         except Exception as e:
-            print(f"Error creating book: {str(e)}")
+            logger.error(f"Error creating book: {str(e)}")
             return None
-
-    def show_dialog(self):
-        """
-        Create and show the book form dialog.
-        This method creates the form, sets up the dialog and displays it.
-        """
-        # Create the form layout
-        form_layout = self.create_form()
-        
-        # Determine title based on whether we're editing or creating
-        dialog_title = "Edit Book" if self.book_to_edit else "Add New Book"
-        
-        # Create the dialog
-        self.dialog = ft.AlertDialog(
-            # modal=True, # TODO: interesting: docs say True shall allow closing by clicking outside the AD, however, in fact it is the reverse. research more ...
-            title=ft.Text(dialog_title),
-            content=form_layout,
-            actions=[
-                ft.TextButton("Cancel", on_click=lambda e: self.close_dialog()),
-                ft.TextButton("Save", on_click=lambda e: self.handle_save_click(e)),
-            ],
-            actions_alignment=ft.MainAxisAlignment.END,
-            open=True,
-            scrollable=True,
-        )
-        
-        # Add the dialog to the page
-        self.page.add(self.dialog)
-        self.page.update()
     
-    def handle_save_click(self, e: ft.ControlEvent) -> None:
+    async def handle_save_click(self, e: ft.ControlEvent) -> None:
         """Handle the Save button click"""
         logger.info(f"HANDLE SAVE CLICK")
         # First validate the form
@@ -269,10 +243,15 @@ class BookForm:
         book = self.collect_form_data()
         
         if book:
-            # Call the callback with the book
-            self.on_save_callback(book)
             # Close the dialog
-            self.close_dialog()
+            await self.close_dialog()
+            
+            # Call the callback with the book
+            await asyncio.sleep(0.3)
+            await self.on_save_callback(book)
+            
+            # No page update here - callback will handle it
+            logger.info(f"HANDLE SAVE CLICK WORKED AND AD IS CLOSED")
         else:
             # Show generic error if book creation failed
             self.snack_bar = ft.SnackBar(
@@ -282,10 +261,80 @@ class BookForm:
             self.page.add(self.snack_bar)
             self.snack_bar.open = True
             self.page.update()
+        
+        # No page update here either
+        logger.info(f"HANDLE SAVE CLICK IS FINISHED")
 
-    def close_dialog(self):
+    async def close_dialog(self, e=None):
         """Close the dialog"""
-        logger.info(f"CLOSE DIALOG")
+        logger.info(f"CLOSE DIALOG STARTED")
+        
         if self.dialog:
+            self.page.close(self.dialog)
+            logger.info(f"SELF DIALOG IS FOUND. LET'S CLOSE IT ...")
+            
+            # Set state to closed first
             self.dialog.open = False
+            
+            # Then remove from overlay
+            if self.dialog in self.page.overlay:
+                self.page.overlay.remove(self.dialog)
+            
+            # Clear all dialog references
+            self.dialog = None
+            self.page.dialog = None
+            
+            # Clear any other potential dialogs
+            for control in list(self.page.overlay):
+                if isinstance(control, ft.AlertDialog):
+                    control.open = False
+                    self.page.overlay.remove(control)
+            
+            # Update overlay
             self.page.update()
+            
+            # Small delay to ensure close animation completes
+            await asyncio.sleep(0.3)
+        
+        logger.info(f"CLOSE DIALOG COMPLETED")
+            
+    def show_dialog(self):
+        """
+        Create and show the book form dialog.
+        This method creates the form, sets up the dialog and displays it.
+        """
+        logger.info("SHOW_DIALOG: Starting dialog creation")
+        
+        # Create the form layout
+        form_layout = self.create_form()
+        logger.info("SHOW_DIALOG: Form layout created")
+        
+        # Determine title based on whether we're editing or creating
+        dialog_title = "Edit Book" if self.book_to_edit else "Add New Book"
+        
+        # First check if there's already a dialog in overlay and remove it
+        for control in list(self.page.overlay):
+            if isinstance(control, ft.AlertDialog):
+                logger.info("SHOW_DIALOG: Found existing dialog in overlay, removing it")
+                self.page.overlay.remove(control)
+        
+        # Create the dialog with a container wrapper for better spacing
+        self.dialog = ft.AlertDialog(
+            modal=False,  # Allow clicking outside to dismiss
+            title=ft.Text(dialog_title),
+            content=ft.Container(  # Container wrapper
+                content=form_layout,
+                padding=10,
+            ),
+            actions=[
+                ft.TextButton("Cancel", on_click=self.close_dialog),
+                ft.TextButton("Save", on_click=self.handle_save_click),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+            open=True,
+            scrollable=True,
+        )
+        
+        self.page.open(self.dialog)
+        self.page.update()
+    
