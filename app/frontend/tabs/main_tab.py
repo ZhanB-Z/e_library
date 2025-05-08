@@ -89,10 +89,10 @@ class MainTabBuilder:
             
         book_cards = []
         
-        # Create rows with 3 books per row
+        # Create rows with 5 books per row
         # TODO: make this dynamic and adjustable to the size of the screen
-        for i in range(0, len(books), 3):
-            row_books = books[i:i+3]
+        for i in range(0, len(books), 5):
+            row_books = books[i:i+5]
             row = ft.Row(
                 [self.create_book_card(book, on_edit_book) for book in row_books],
                 alignment=ft.MainAxisAlignment.START,

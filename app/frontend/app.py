@@ -152,13 +152,7 @@ class FletApp():
         logger.info(f"SAVE_BOOK_DATA: Calling backend_client.save_book")
         saved_book = self.backend_client.save_book(book)
         
-        logger.info(f"SAVE_BOOK_DATA: Book saved successfully: {saved_book}")
-        
         if saved_book:
-            logger.info(f"SAVE_BOOK_DATA: Book saved, refreshing book list")
-            # And we will refresh book list here
-            # await self.refresh_book_list()
-            # No page update here, refresh_book_list handles it
             self.main_tab_builder.update_book_grid(self.edit_book)
             
             # Clear any dialog that might be lingering
@@ -175,15 +169,6 @@ class FletApp():
     
         logger.info(f"SAVE_BOOK_DATA: Completed with page reload")
         # No final page update here
-
-    # async def refresh_book_list(self):
-    #     """Refresh the book list display"""
-    #     # Clear the current tab and recreate it
-    #     await asyncio.sleep(0.3)  # Small delay before tab refresh
-    #     self.tab_manager.select_tab(0)
-    #     self.page.update()  # Single update here
-    #     logger.info(f"REFRESH_BOOK_LIST: Tab refreshed")
-
 
     async def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handler for editing an existing book"""
