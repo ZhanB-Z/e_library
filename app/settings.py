@@ -19,6 +19,7 @@ class Settings(BaseConfig):
     flet_port: int = 50002
     flet_slug: str = 'e_library'
     flet_secret_key: str = "flet_secret_key"
+    flet_assets_dir: str = ""
     
     flet_prod_host: str = ""
     download_server_url: str = ""

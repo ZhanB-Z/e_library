@@ -23,6 +23,7 @@ def main() -> None:
             flet_slug=settings.flet_slug,
             flet_secret_key=settings.flet_secret_key,
             flet_prod_host=settings.flet_prod_host,
+            assets_dir=settings.flet_assets_dir,
             download_server_url=settings.download_server_url,
             backend_client=backend_client,
         ),

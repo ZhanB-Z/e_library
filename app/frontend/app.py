@@ -24,12 +24,14 @@ class FletApp():
         flet_secret_key: str,
         app_prod_host: str,
         download_server_url: str,
+        assets_dir: str,
         backend_client: BackendClient,
     ) -> None:
         self.page = page
         self.page.scroll = "auto"
         self.page.bgcolor = AppColors.BACKGROUND
         self.dev_mode = dev_mode
+        self.assets_dir = assets_dir
         self.backend_client = backend_client
         self.ui_builder = UIComponents(page=self.page)
         self.dialog = ft.AlertDialog(open=False)
@@ -47,6 +49,7 @@ class FletApp():
         # Create main tab builder
         self.main_tab_builder = MainTabBuilder(
             self.page, 
+            self.assets_dir,
             self.ui_builder,
             self.backend_client
         )
@@ -209,6 +212,7 @@ def get_flet_app(
     flet_prod_host: str,
     download_server_url: str,
     backend_client: BackendClient,
+    assets_dir: str
 ) -> FletApp:
     app = FletApp(
         page=page,
@@ -220,6 +224,7 @@ def get_flet_app(
         app_prod_host=flet_prod_host,
         download_server_url=download_server_url,
         backend_client=backend_client,
+        assets_dir=assets_dir,
     )
 
     return app
