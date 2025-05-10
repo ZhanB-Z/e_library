@@ -33,3 +33,6 @@ data/
 # Ignore macOS system files
 .DS_Store
 **/.DS_Store
+
+# Old draft methods:
+app/frontend/tabs/main_tab_old_elements.py

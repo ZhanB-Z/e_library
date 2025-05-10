@@ -134,18 +134,6 @@ class FletApp():
         # Show the dialog
         book_form.show_dialog()
     
-    def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
-        """Handler for editing an existing book"""
-        logger.info(f"EDIT BOOK HANDLER")
-        # Create an instance of BookForm with the book to edit
-        book_form = BookForm(
-            page=self.page,
-            ui_builder=self.ui_builder,
-            on_save_callback=self.save_book_data,
-            book_to_edit=book
-        )
-        # Show the dialog
-        book_form.show_dialog()
     
     async def save_book_data(self, book: BookSchema) -> None:
         """Save the book data after form submission"""
@@ -173,10 +161,9 @@ class FletApp():
         logger.info(f"SAVE_BOOK_DATA: Completed with page reload")
         # No final page update here
 
-    async def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
+    def edit_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handler for editing an existing book"""
-        logger.info(f"EDIT BOOK HANDLER for {book.title}")
-        
+        logger.info(f"EDIT BOOK HANDLER")
         # Create an instance of BookForm with the book to edit
         book_form = BookForm(
             page=self.page,
@@ -184,7 +171,6 @@ class FletApp():
             on_save_callback=self.save_book_data,
             book_to_edit=book
         )
-        
         # Show the dialog
         book_form.show_dialog()
         

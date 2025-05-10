@@ -106,137 +106,8 @@ class MainTabBuilder:
             book_cards.append(row)
         
         return ft.Column(book_cards, spacing=AppSpacing.LARGE)
-    
-    def create_book_card2(self, book: BookSchema, on_edit_book: Callable):
-        """Create a card for a single book"""
-        # Title Container
-        title_container = ft.Container(
-            content=self.ui_builder.create_text_field(
-                value=self.ui_builder.truncate_text(book.title, max_length=25),
-                text_size=AppTypography.SUBHEADER_SIZE,
-                color=AppColors.TEXT_PRIMARY,
-                # tooltip=book.title,  # Show full title on hover
-                overflow=ft.TextOverflow.ELLIPSIS,
-                no_wrap=True,  
-            ),
-            height=40,  # Fixed height for title container
-            width=260,  # Fixed width
-            alignment=ft.alignment.center_left 
-        )
-            
-        # Title and author
-        title = self.ui_builder.create_text_field(
-            value=title_container,
-            text_size=AppTypography.SUBHEADER_SIZE,
-            color=AppColors.TEXT_PRIMARY
-        )
-        
-        author = self.ui_builder.create_text_field(
-            value=f"by {book.author}",
-            text_size=AppTypography.BODY_SIZE,
-            color=AppColors.TEXT_SECONDARY
-        )
-        
-        # Publication info
-        pub_info = ""
-        if book.year_published:
-            pub_info += f"Published: {book.year_published}"
-        if book.year_read:
-            if pub_info:
-                pub_info += " | "
-            pub_info += f"Read: {book.year_read}"
-            
-        pub_info_text = self.ui_builder.create_text_field(
-            value=pub_info,
-            text_size=AppTypography.BODY_SIZE - 2,
-            color=AppColors.TEXT_SECONDARY
-        )
-        
-        # Rating stars
-        rating_row = ft.Row([])
-        if book.rating:
-            for i in range(5):
-                icon = ft.icons.STAR if i < book.rating else ft.icons.STAR_BORDER
-                rating_row.controls.append(ft.Icon(icon, color=AppColors.ACCENT, size=18))
-        
-        # Genres
-        genres_text = ""
-        if book.genres:
-            genres_text = ", ".join(book.genres)
-            
-        genres = self.ui_builder.create_text_field(
-            value=genres_text,
-            text_size=AppTypography.BODY_SIZE - 2,
-            color=AppColors.TEXT_SECONDARY
-        )
-        
-        # Edit button
-        edit_button = self.ui_builder.create_button(
-            text="Edit",
-            on_click=lambda e, b=book: on_edit_book(e, b),
-            width=100,
-            bgcolor=AppColors.SECONDARY,
-            color=AppColors.TEXT_PRIMARY,
-        )
-        
-        # Delete button
-        delete_button = self.ui_builder.create_button(
-            text="Delete",
-            on_click=lambda e, b=book: self.handle_delete_book(e, b),
-            width=100,
-            bgcolor=AppColors.ERROR,
-            color=AppColors.TEXT_PRIMARY
-        )
-        
-        # Book card content
-        content = ft.Column([
-            title_container,
-            author,
-            pub_info_text,
-            rating_row,
-            genres,
-            ft.Container(height=AppSpacing.MEDIUM),  # Spacer
-            ft.Row([
-                edit_button,
-                delete_button
-                ], 
-                spacing=AppSpacing.SMALL,
-                alignment=ft.MainAxisAlignment.END
-            )
-        ], spacing=AppSpacing.SMALL)
-        
-        # Create and return the card
-        return self.ui_builder.create_card(
-            content=content,
-            width=300,
-            height=None  # Let height adjust to content
-        )
 
-    def load_default_image(self,):
-        """
-        Load the default book cover image as a base64 data URI.
-        Returns a data URI string that can be used as an image source.
-        """
-        try:
-            # Define the path to the default image
-            image_path = f"{self.assets_dir}/default_book.png"
-            
-            # Check if the file exists
-            if not os.path.exists(image_path):
-                print(f"Warning: Default image not found at {image_path}")
-                return ""
-            
-            # Load the image file and convert to base64
-            with open(image_path, "rb") as img_file:
-                img_data = base64.b64encode(img_file.read()).decode('utf-8')
-                
-            # Create and return a data URI
-            return f"data:image/png;base64,{img_data}"
-        
-        except Exception as e:
-            print(f"Error loading default image: {str(e)}")
-            return ""  
-            
+    
     def create_book_card(self, book: BookSchema, on_edit_book: Callable):
         """Create a card for a single book with image display"""
         
@@ -245,79 +116,113 @@ class MainTabBuilder:
             img_src = f"file://{book.cover_image_path}"
         else:
             img_src = self.load_default_image()
+        
+        # Book cover image container (left side)
+        cover_image = ft.Container(
+            content=ft.Image(
+                src=img_src,
+                width=100,
+                height=150,
+                fit=ft.ImageFit.COVER,
+                border_radius=ft.border_radius.all(8),
+            ),
+            width=120,
+            height=180,
+            margin=ft.margin.only(right=AppSpacing.MEDIUM),
+        )
+        
+        # Book title
+        title = self.ui_builder.create_text_field(
+            value=self.ui_builder.truncate_text(book.title, max_length=40),
+            text_size=AppTypography.SUBHEADER_SIZE,
+            color=AppColors.TEXT_PRIMARY,
+            overflow=ft.TextOverflow.ELLIPSIS,
+            no_wrap=True,
+        )
+        
+        # Author info
+        author = self.ui_builder.create_text_field(
+            value=f"by {book.author}",
+            text_size=AppTypography.BODY_SIZE,
+            color=AppColors.TEXT_SECONDARY,
+        )
+        
+        # Publication info
+        pub_info = self.ui_builder.create_text_field(
+            value=self._format_publication_info(book),
+            text_size=AppTypography.BODY_SIZE - 2,
+            color=AppColors.TEXT_SECONDARY,
+        )
             
-        # Create a row-based layout with image on left, details on right
+        # Book summary 
+        summary_text = self._format_book_summary(book)
+        
+        summary = self.ui_builder.create_text_field(
+            value=summary_text,
+            text_size=AppTypography.BODY_SIZE,
+            color=AppColors.TEXT_PRIMARY,
+            max_lines=2,
+            width=600,
+        )
+        
+        # Rating stars (top right)
+        rating_stars = self._create_rating_stars(book.rating)
+        
+        # Genre info (under rating stars)
+        genres = self.ui_builder.create_text_field(
+            value=", ".join(book.genres) if book.genres else "",
+            text_size=AppTypography.BODY_SIZE - 2,
+            color=AppColors.TEXT_SECONDARY,
+        )
+        
+        # Action buttons (bottom right)
+        action_buttons = ft.Row([
+            self.ui_builder.create_button(
+                text="Edit",
+                on_click=lambda e, b=book: on_edit_book(e, b),
+                width=100,
+                bgcolor=AppColors.SECONDARY,
+                color=AppColors.TEXT_PRIMARY,
+            ),
+            self.ui_builder.create_button(
+                text="Delete",
+                on_click=lambda e, b=book: self.handle_delete_book(e, b),
+                width=100,
+                bgcolor=AppColors.ERROR,
+                color=AppColors.TEXT_PRIMARY,
+            ),
+        ], 
+        spacing=AppSpacing.SMALL,
+        alignment=ft.MainAxisAlignment.END
+        )
+        
+        # Create the layout with proper organization
+        # First, create the top row with title and ratings/genre on opposite sides
+        top_row = ft.Row([
+            # Left side (title)
+            ft.Column([title], expand=True),
+            
+            # Right side (rating and genre)
+            ft.Column([
+                rating_stars,
+                genres
+            ], horizontal_alignment=ft.CrossAxisAlignment.END)
+        ])
+        
+        # Create the content layout
         card_content = ft.Row([
             # Left side: Book cover image
-            ft.Container(
-                content=ft.Image(
-                    # src=book.cover_image_path if book.cover_image_path else "app/frontend/assets/default_book.png",
-                    src=img_src,
-                    width=100,
-                    height=150,
-                    fit=ft.ImageFit.COVER,
-                    border_radius=ft.border_radius.all(8),
-                ),
-                width=120,
-                height=180,
-                margin=ft.margin.only(right=AppSpacing.MEDIUM),
-            ),
+            cover_image,
             
-            # Right side: Book details
+            # Right side: Book details organized in a column
             ft.Column([
-                # Title
-                self.ui_builder.create_text_field(
-                    value=self.ui_builder.truncate_text(book.title, max_length=40),
-                    text_size=AppTypography.SUBHEADER_SIZE,
-                    color=AppColors.TEXT_PRIMARY,
-                    overflow=ft.TextOverflow.ELLIPSIS,
-                    no_wrap=True,
-                ),
-                
-                # Author
-                self.ui_builder.create_text_field(
-                    value=f"by {book.author}",
-                    text_size=AppTypography.BODY_SIZE,
-                    color=AppColors.TEXT_SECONDARY,
-                ),
-                
-                # Publication info
-                self.ui_builder.create_text_field(
-                    value=self._format_publication_info(book),
-                    text_size=AppTypography.BODY_SIZE - 2,
-                    color=AppColors.TEXT_SECONDARY,
-                ),
-                
-                # Rating stars
-                self._create_rating_stars(book.rating),
-                
-                # Genres
-                self.ui_builder.create_text_field(
-                    value=", ".join(book.genres) if book.genres else "",
-                    text_size=AppTypography.BODY_SIZE - 2,
-                    color=AppColors.TEXT_SECONDARY,
-                ),
-                
-                # Buttons
-                ft.Row([
-                    self.ui_builder.create_button(
-                        text="Edit",
-                        on_click=lambda e, b=book: on_edit_book(e, b),
-                        width=100,
-                        bgcolor=AppColors.SECONDARY,
-                        color=AppColors.TEXT_PRIMARY,
-                    ),
-                    self.ui_builder.create_button(
-                        text="Delete",
-                        on_click=lambda e, b=book: self.handle_delete_book(e, b),
-                        width=100,
-                        bgcolor=AppColors.ERROR,
-                        color=AppColors.TEXT_PRIMARY,
-                    )
-                ], 
-                spacing=AppSpacing.SMALL,
-                alignment=ft.MainAxisAlignment.END
-                ),
+                top_row,             # Title, rating stars, and genre
+                author,              # Author info
+                pub_info,            # Publication info
+                ft.Container(height=5),  # Small spacer
+                summary,             # Book summary (first 2 lines)
+                ft.Container(height=5),  # Small spacer
+                action_buttons       # Buttons at the bottom
             ], 
             spacing=AppSpacing.SMALL,
             expand=True  # Make the column take up remaining width
@@ -330,7 +235,7 @@ class MainTabBuilder:
             width=800,  # Wider card to accommodate image and text
             height=None  # Let height adjust to content
         )
-
+    
     # Helper methods for cleaner code
     def _format_publication_info(self, book: BookSchema):
         pub_info = ""
@@ -349,9 +254,6 @@ class MainTabBuilder:
                 icon = ft.icons.STAR if i < rating else ft.icons.STAR_BORDER
                 rating_row.controls.append(ft.Icon(icon, color=AppColors.ACCENT, size=18))
         return rating_row
-    
-    
-    
     
     def handle_delete_book(self, e: ft.ControlEvent, book: BookSchema) -> None:
         """Handle deletion of a book"""
@@ -383,8 +285,6 @@ class MainTabBuilder:
                 snack_bar.open = True
                 
             self.page.update()
-        
-        
         
         # Create confirmation dialog
         self.confirm_dialog = ft.AlertDialog(
@@ -431,9 +331,65 @@ class MainTabBuilder:
         
         return updated_grid
 
-
+    def load_default_image(self,):
+        """
+        Load the default book cover image as a base64 data URI.
+        Returns a data URI string that can be used as an image source.
+        """
+        try:
+            # Define the path to the default image
+            image_path = f"{self.assets_dir}/default_book.png"
+            
+            # Check if the file exists
+            if not os.path.exists(image_path):
+                print(f"Warning: Default image not found at {image_path}")
+                return ""
+            
+            # Load the image file and convert to base64
+            with open(image_path, "rb") as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+                
+            # Create and return a data URI
+            return f"data:image/png;base64,{img_data}"
+        
+        except Exception as e:
+            print(f"Error loading default image: {str(e)}")
+            return ""  
+        
     def get_book_image_path(self, book: BookSchema) -> str:
-        """Get the path to the book cover image, using default if none exists"""
+        """
+        Get the path to the book cover image, 
+        using default if none exists
+        """
         if book.cover_image_path and os.path.exists(book.cover_image_path):
             return book.cover_image_path
         return f"{self.assets_dir}/default_book.png"
+
+    
+    def _format_book_summary(
+        self, 
+        book: BookSchema, 
+        max_length: int = 150, 
+        max_lines: int = 2
+    ) -> str:
+        """
+        Format the book summary for display on the book card.
+        """
+        if not book.summary:
+            return "No summary available."
+            
+        # Split summary into lines
+        summary_lines = book.summary.split("\n")
+        
+        # If there are multiple lines, take the specified number
+        if len(summary_lines) >= max_lines:
+            summary_text = "\n".join(summary_lines[:max_lines])
+        else:
+            # Otherwise truncate to max_length
+            summary_text = self.ui_builder.truncate_text(book.summary, max_length)
+            
+        # Add ellipsis if the summary was truncated
+        if (len(summary_lines) > max_lines) or (len(book.summary) > max_length):
+            summary_text += "..."
+            
+        return summary_text

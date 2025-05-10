@@ -223,6 +223,7 @@ class UIComponents:
             text_size: Optional[int] = None,
             no_wrap: Optional[bool] = False,
             overflow: Optional[ft.TextOverflow]="visible",
+            max_lines: Optional[int] = None,
             expand: bool = False,
             **kwargs
     ) -> ft.Text:
@@ -253,7 +254,7 @@ class UIComponents:
             expand=expand,
             no_wrap=no_wrap,
             overflow=overflow,
-            max_lines=None,
+            max_lines=max_lines,
             size=text_size,
             **kwargs
         )
