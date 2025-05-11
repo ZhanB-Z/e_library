@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 import flet as ft
 from loguru import logger
 
-from app.frontend.theme import AppColors, AppTypography, AppSpacing  # Import your theme classes
+from app.frontend.assets.theme import AppColors, AppTypography, AppSpacing  # Import your theme classes
 
 class UIComponents:
     """A collection of static methods for creating UI components in Flet applications."""

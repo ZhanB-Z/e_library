@@ -4,7 +4,7 @@ import flet as ft
 from loguru import logger
 import asyncio
 
-from app.frontend.theme import AppSpacing, AppTypography
+from app.frontend.assets.theme import AppSpacing, AppTypography
 from app.frontend.ui_components import UIComponents
 from app.models.models import BookSchema
 

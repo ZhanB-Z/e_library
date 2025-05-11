@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import os
 from typing import Callable, List, Optional
@@ -5,8 +6,9 @@ import flet as ft
 from loguru import logger
 
 from app.backend.client import BackendClient
+from app.frontend.forms.book_form import BookForm
 from app.frontend.ui_components import UIComponents
-from app.frontend.theme import AppColors, AppTypography, AppSpacing
+from app.frontend.assets.theme import AppColors, AppTypography, AppSpacing
 from app.models.models import BookSchema
 
 class MainTabBuilder:
@@ -24,8 +26,7 @@ class MainTabBuilder:
         
     def create_tab(
         self, 
-        on_add_book, 
-        on_edit_book):
+    ):
         """Create and return the main tab layout"""
         
         # Header section (centered)
@@ -44,7 +45,7 @@ class MainTabBuilder:
         # Button (right-aligned)
         add_button = self.ui_builder.create_button(
             text="Add Book",
-            on_click=on_add_book,
+            on_click=self.add_book_handler,
             bgcolor=AppColors.PRIMARY,
             color=AppColors.TEXT_PRIMARY
         )
@@ -53,7 +54,7 @@ class MainTabBuilder:
         books = self.backend_client.get_all_books()
         
         # Create book grid
-        book_grid = self.create_book_grid(books, on_edit_book)
+        book_grid = self.create_book_grid(books)
         
         # Main layout
         main_layout = ft.Column([
@@ -79,9 +80,8 @@ class MainTabBuilder:
     def create_book_grid(
         self, 
         books: List[BookSchema], 
-        on_edit_book: Callable
     ):
-        """Create a grid of book cards"""
+        """Create a columnt of book rows"""
         if not books:
             return ft.Container(
                 content=self.ui_builder.create_text_field(
@@ -92,23 +92,21 @@ class MainTabBuilder:
                 alignment=ft.alignment.center
             )
             
-        book_cards = []
+        book_rows = []
         
-        # Create rows with 5 books per row
-        # TODO: make this dynamic and adjustable to the size of the screen
-        for i in range(0, len(books), 1):
-            row_books = books[i:i+1]
-            row = ft.Row(
-                [self.create_book_card(book, on_edit_book) for book in row_books],
-                alignment=ft.MainAxisAlignment.CENTER,
-                spacing=AppSpacing.MEDIUM
+        for book in books:
+            book_row = ft.Row(
+                [self.create_book_card(book)],
+                alignment=ft.MainAxisAlignment.CENTER
             )
-            book_cards.append(row)
+            book_rows.append(book_row)
         
-        return ft.Column(book_cards, spacing=AppSpacing.LARGE)
-
+        return ft.Column(
+            book_rows, 
+            spacing=AppSpacing.LARGE
+        )
     
-    def create_book_card(self, book: BookSchema, on_edit_book: Callable):
+    def create_book_card(self, book: BookSchema):
         """Create a card for a single book with image display"""
         
         if book.cover_image_path and os.path.exists(book.cover_image_path):
@@ -179,7 +177,7 @@ class MainTabBuilder:
         action_buttons = ft.Row([
             self.ui_builder.create_button(
                 text="Edit",
-                on_click=lambda e, b=book: on_edit_book(e, b),
+                on_click=lambda e, b=book: self.edit_book_handler(e, b),
                 width=100,
                 bgcolor=AppColors.SECONDARY,
                 color=AppColors.TEXT_PRIMARY,
@@ -274,7 +272,7 @@ class MainTabBuilder:
                 snack_bar.open = True
                 
                 # Use the update_book_grid method to refresh just the grid
-                self.update_book_grid(lambda e, b: self.page.app.edit_book(e, b))
+                self.update_book_grid()
             else:
                 # Show error message
                 snack_bar = ft.SnackBar(
@@ -284,6 +282,8 @@ class MainTabBuilder:
                 self.page.add(snack_bar)
                 snack_bar.open = True
                 
+                self.update_book_grid()
+            
             self.page.update()
         
         # Create confirmation dialog
@@ -308,17 +308,16 @@ class MainTabBuilder:
                 self.page.close(self.confirm_dialog)
             self.page.update()
     
-    def update_book_grid(self, on_edit_book: Callable) -> ft.Column:
+    def update_book_grid(self) -> ft.Column:
         """
         Update the book grid with fresh data from the backend.
         Returns the updated book grid component.
         """
         # Get fresh books data from backend
         books = self.backend_client.get_all_books()
-        logger.info(f"UPDATE_BOOK_GRID: Got {len(books)} books")
         
         # Create new book grid with updated data
-        updated_grid = self.create_book_grid(books, on_edit_book)
+        updated_grid = self.create_book_grid(books)
         
         # Find and replace the existing grid in the page
         for control in self.page.controls:
@@ -393,3 +392,38 @@ class MainTabBuilder:
             summary_text += "..."
             
         return summary_text
+    
+    
+    def add_book_handler(self, e: ft.ControlEvent) -> None:
+        """Handler for the Add Book button click"""
+        book_form = BookForm(
+            page=self.page,
+            ui_builder=self.ui_builder,
+            on_save_callback=self.save_book_data
+        )
+        # Show the dialog
+        book_form.show_dialog()
+    
+    def edit_book_handler(self, e: ft.ControlEvent, book: BookSchema) -> None:
+        """Handler for editing an existing book"""
+        book_form = BookForm(
+            page=self.page,
+            ui_builder=self.ui_builder,
+            on_save_callback=self.save_book_data,
+            book_to_edit=book
+        )
+        book_form.show_dialog()
+    
+    async def save_book_data(self, book: BookSchema) -> None:
+        """Save the book data after form submission"""
+        saved_book = self.backend_client.save_book(book)
+        if saved_book:
+            # Clear any dialog that might be lingering
+            for control in list(self.page.overlay):
+                if isinstance(control, ft.AlertDialog):
+                    self.page.close(control)
+            # Update book grid
+            self.update_book_grid()
+            # Single update at the end
+            await asyncio.sleep(0.2)  
+            self.page.update()
